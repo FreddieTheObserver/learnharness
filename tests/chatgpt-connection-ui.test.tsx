@@ -78,10 +78,12 @@ test("Providers is the first/default page; General is last and other pages keep 
 
 test("Providers has exactly four ordered sections; unknown variables stay masked/read-only at the end of Model API keys", async () => {
  globalThis.fetch = async (url) => {
+  if (url === "/api/custom-providers") return Response.json({ providers: [] });
   assert.equal(url, "/api/keys");
   return Response.json({ providers: [{ id: "openai", envVar: "OPENAI_API_KEY", label: "OpenAI" }], keys: [{ id: "FUTURE_VAR", info: null, present: true, masked: "…abcd", source: "file", shadowedByEnv: false }] });
  };
  fixture(); await mount(<KeysSection />);
+ assert(byTest("add-custom-endpoint").closest('[data-testid="group-provider-keys"]'), "custom endpoints live with the model API keys");
  const headings = [...document.querySelectorAll('[data-testid^="group-"] > p')].map((el) => el.textContent);
  assert.deepEqual(headings, ["Model API keys", "Subscriptions", "Dictation", "Search"]);
  assert(byTest("key-deepgram_api_key").closest('[data-testid="group-dictation"]'));

@@ -24,9 +24,10 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { AUTH_KEYS, type AuthKeyStatus } from "@/src/core";
+import { AUTH_KEYS, isCustomProviderEnvVar, type AuthKeyStatus } from "@/src/core";
 import { SettingsGroup } from "./controls.tsx";
 import { SubscriptionConnections } from "./subscription-connections.tsx";
+import { CustomEndpoints } from "./custom-providers-section.tsx";
 import { ProviderMenuList } from "./model-menu.tsx";
 import { MenuShell } from "@/components/menu-shell";
 import { notifySettingsSaved } from "@/components/settings-signal";
@@ -81,7 +82,8 @@ export function classifyKeys(
 	const providerRows: AuthKeyStatus[] = [];
 	const unknownRows: AuthKeyStatus[] = [];
 	for (const s of statuses) {
-		if (isTool(s.id)) continue;
+		// Custom endpoint keys are edited in their endpoint's own row.
+		if (isTool(s.id) || isCustomProviderEnvVar(s.id)) continue;
 		if (providerEnv.has(s.id) || (!s.info && providers === undefined)) providerRows.push(s);
 		else if (!s.info) unknownRows.push(s);
 		// (pre-interlude catalogs: a curated-but-unclassified status still
@@ -447,6 +449,7 @@ export function KeysSection({
 						<AddProviderEditor provider={adding} onSave={(v) => void saveNewProvider(adding, v)} onCancel={() => setAdding(null)} error={addError} />
 					</div>
 				)}
+				<CustomEndpoints initialRow={initialRow} />
 				{unknownRows.length > 0 && <div data-testid="group-unknown-keys">
 					{unknownRows.map((status) => <div key={status.id} data-testid={`unknown-${status.id}`} className="flex items-center justify-between gap-3 px-1 py-1.5 opacity-40">
 						<span className="font-mono text-xs text-foreground">{status.id}</span>

@@ -43,6 +43,8 @@ import { MenuShell } from "@/components/menu-shell";
 import { notifySettingsSaved, useSettingsSaved } from "@/components/settings-signal";
 import { Hint } from "@/components/ui/hint";
 import { type ProviderKeyInfo } from "@/components/settings/keys-section";
+import { CUSTOM_ENDPOINT_NEW_ROW } from "@/components/settings/custom-providers-section";
+import { useSettingsDialog } from "@/components/settings/settings-dialog";
 import { ProviderMenuList } from "@/components/settings/model-menu";
 import { ChatGPTBackgroundAccess } from "@/components/settings/chatgpt-connection";
 import { NativeSubscriptionBackgroundAccess, SubscriptionConnections } from "@/components/settings/subscription-connections";
@@ -129,6 +131,7 @@ export function SetupKeysBody({
 	onValue,
 	onSave,
 	menuAnchor,
+	onCustomEndpoint,
 }: {
 	/** The full provider roster (GET /api/keys providers) — undefined
 	 *  while it loads; the picker renders an honest empty state then. */
@@ -146,6 +149,8 @@ export function SetupKeysBody({
 	onSave: () => void;
 	/** The MenuShell anchor — wired by the wrapper (its triggerRef). */
 	menuAnchor: React.RefObject<HTMLDivElement | null>;
+	/** Opens Settings on the custom-endpoint form (absent = no link). */
+	onCustomEndpoint?: () => void;
 }) {
 	return (
 		<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
@@ -211,6 +216,19 @@ export function SetupKeysBody({
 						{error}
 					</p>
 				)}
+				{onCustomEndpoint && (
+					<p className="text-xs text-muted-foreground">
+						Using your own server or a university gateway?{" "}
+						<button
+							type="button"
+							onClick={onCustomEndpoint}
+							data-testid="setup-custom-endpoint"
+							className="text-foreground underline-offset-2 hover:underline"
+						>
+							Add a custom endpoint
+						</button>
+					</p>
+				)}
 			</div>
 			<div className="mt-2 border-t border-border/60 pt-4"><h3 className="mb-3 font-ui text-xs text-muted-foreground">Subscriptions</h3><SubscriptionConnections setup /></div>
 		</div>
@@ -253,6 +271,7 @@ export function SetupDialog({
 	// below them all. (Stage 2's slot menus anchor by anchorTestid instead —
 	// see the slot MenuShell below for why a ref cannot work there.)
 	const keyTriggerRef = useRef<HTMLDivElement>(null);
+	const { open: openSettings } = useSettingsDialog();
 
 	// The keys signal (zero-keys wave): keys-section saves/deletes AND
 	// THIS dialog's own first-key save dispatch it; the fetch effect below
@@ -450,6 +469,10 @@ export function SetupDialog({
 								}}
 								onValue={setKeyValue}
 								onSave={() => void saveKey()}
+								onCustomEndpoint={() => {
+									onClose();
+									openSettings("keys", CUSTOM_ENDPOINT_NEW_ROW);
+								}}
 							/>
 						)}
 					</div>
