@@ -51,8 +51,10 @@ import {
 	maskKey,
 	validateKeyShape,
 } from "../core/auth-keys.ts";
+import { customProviderEnvVar, isCustomProviderEnvVar } from "../core/custom-providers.ts";
 import { authStore } from "../store/auth.ts";
 import { isSubscriptionProvider, subscriptionConnected } from "../agent/subscription-connections.ts";
+import { customProviderConfigs } from "../agent/custom-providers.ts";
 
 // The once-per-process boot record — globalThis anchor (HMR re-imports the
 // module; the snapshot must not re-run and misread fill-gapped vars as real
@@ -75,7 +77,12 @@ function boot(): AuthBoot {
 /** Is `id` a WRITABLE key name — curated catalog or model-provider env
  *  var (provider-keys interlude: PUT/DELETE accept both). */
 export function isWritableAuthKey(id: string): boolean {
-	return isKnownAuthKey(id) || isProviderEnvVar(id);
+	return isKnownAuthKey(id) || isProviderEnvVar(id) || isCustomProviderEnvVar(id);
+}
+
+/** The env vars of the custom endpoints currently configured. */
+function customProviderEnvVars(): string[] {
+	return Object.keys(customProviderConfigs()).map(customProviderEnvVar);
 }
 
 /** The settings page's provider dropdown: every pi-ai provider that takes
@@ -109,6 +116,8 @@ export function initAuthEnv(): void {
 		// an env-exported OPENAI_API_KEY with a file copy gets honest shadow
 		// semantics, exactly like the curated vars.
 		...AUTH_PROVIDER_KEYS.map((p) => p.envVar),
+		// Custom endpoint keys follow the same rules; their names are a pattern.
+		...Object.keys(process.env).filter(isCustomProviderEnvVar),
 	]);
 	if (envKeysIgnored()) {
 		// THE FRESH-USER SWITCH: delete every managed env var (re-run on
@@ -179,7 +188,8 @@ export function resolveKeyStatuses(
 
 /** The GET view: every curated key (present or not) + unknown file vars. */
 export function keyStatuses(): AuthKeyStatus[] {
-	return resolveKeyStatuses(authStore.authVars(), process.env, boot().realEnv, AUTH_PROVIDER_ENV_VARS);
+	const providerEnvVars = new Set([...AUTH_PROVIDER_ENV_VARS, ...customProviderEnvVars()]);
+	return resolveKeyStatuses(authStore.authVars(), process.env, boot().realEnv, providerEnvVars);
 }
 
 /** The live value for one var, env-first (the env-wins rule) — the canonical
@@ -202,6 +212,7 @@ export function keyValue(id: string): string | undefined {
  * no key at all: nothing to gate, present by definition. */
 export function providerKeyPresent(provider: string): boolean {
 	if (isSubscriptionProvider(provider)) return subscriptionConnected(provider);
+	if (Object.hasOwn(customProviderConfigs(), provider)) return keyValue(customProviderEnvVar(provider)) !== undefined;
 	const info = AUTH_PROVIDER_KEYS.find((p) => p.id === provider);
 	return info ? keyValue(info.envVar) !== undefined : true;
 }
@@ -213,7 +224,7 @@ export function providerKeyPresent(provider: string): boolean {
  * reports shadowedByEnv so the page can explain it).
  */
 export function saveKey(id: string, value: string): { ok: true; status: AuthKeyStatus } | { ok: false; error: string } {
-	const shape = isProviderEnvVar(id) ? genericProviderKeyGuard(id, value) : validateKeyShape(id, value);
+	const shape = isProviderEnvVar(id) || isCustomProviderEnvVar(id) ? genericProviderKeyGuard(id, value) : validateKeyShape(id, value);
 	if (!shape.ok) return { ok: false, error: shape.error };
 	const trimmed = value.trim();
 	authStore.setAuthVar(id, trimmed);

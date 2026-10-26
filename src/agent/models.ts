@@ -17,6 +17,7 @@ import { chatGPTStream } from "./chatgpt-stream.ts";
 import type { ChatGPTDispatchLifecycle } from "./chatgpt-request-cycle.ts";
 import { nativeSubscriptionId, nativeSubscriptionModel } from "./subscription-bridge.ts";
 import { nativeSubscriptionStream } from "./subscription-stream.ts";
+import { customProvider, customProviderConfigs, customProviderRevision } from "./custom-providers.ts";
 
 /** App identity is immutable and shared by Models and every native Agent.
  * Agent's default Pi attribution otherwise overrides the Models identity. */
@@ -49,6 +50,30 @@ export interface PiEngine {
 export type { ThinkingLevel };
 
 let collection: ReturnType<typeof createModels> | undefined;
+let builtinIds: ReadonlySet<string> = new Set();
+let appliedCustomRevision = 0;
+let appliedCustomIds: string[] = [];
+
+/** Re-syncs user-defined endpoints when the server published new configs.
+ *  A custom id never replaces a built-in provider. */
+function applyCustomProviders(models: ReturnType<typeof createModels>): void {
+	const revision = customProviderRevision();
+	if (revision === appliedCustomRevision) return;
+	for (const id of appliedCustomIds) models.deleteProvider(id);
+	appliedCustomIds = [];
+	for (const [id, config] of Object.entries(customProviderConfigs())) {
+		if (builtinIds.has(id)) continue;
+		models.setProvider(customProvider(id, config));
+		appliedCustomIds.push(id);
+	}
+	appliedCustomRevision = revision;
+}
+
+/** Built-in pi-ai provider ids, which a custom endpoint id may not reuse. */
+export function builtinProviderIds(): ReadonlySet<string> {
+	piModels();
+	return builtinIds;
+}
 
 /** The process-wide pi-ai Models collection — EVERY builtin provider's
  *  catalog (model slots wave, 2026-09-20): engines and the picker resolve
@@ -62,7 +87,9 @@ export function piModels() {
 	if (!collection) {
 		collection = createModels({ identity: APP_IDENTITY });
 		for (const provider of builtinProviders()) collection.setProvider(provider);
+		builtinIds = new Set(collection.getProviders().map((p) => p.id));
 	}
+	applyCustomProviders(collection);
 	return collection;
 }
 
