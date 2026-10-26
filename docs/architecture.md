@@ -545,6 +545,7 @@ Every place the architecture is designed to be cut — the "one file" a future c
 |---|---|---|
 | Storage decision (JSON→SQLite, remote) | `src/server/stores.ts` | the adapters, once |
 | LLM engine / model per role | settings `models` slots + `src/agent/models.ts` (`piEngineFor`) | provider wiring, one place |
+| User-defined endpoints | settings `customProviders` + `src/server/custom-providers.ts` → `src/agent/custom-providers.ts` registry, applied by `piModels()` | extra Anthropic/OpenAI-compatible providers at user base URLs ([custom-providers.md](custom-providers.md)) |
 | Turn composition | `src/server/chat-handler.ts` | what a turn consists of |
 | Extraction trigger | `src/server/turn-service.ts` (`triggerExtraction`) | when the Library runs |
 | Practice orchestration | `src/agent/subagents/practice-pipeline.ts` | generation/grading flow without touching contracts |

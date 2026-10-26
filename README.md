@@ -50,6 +50,8 @@ Future teaching sessions can read the graph instead of starting from scratch. Pr
 
 Add your provider API key and choose your models, then start a session with what you want to understand. LearnHarness supports 30+ provider options, including OpenAI, Anthropic, Google, DeepSeek, and OpenRouter. Optional dictation and web search use separate service keys.
 
+To use your own server or an institution's gateway, add a [custom endpoint](docs/custom-providers.md) that speaks the Anthropic Messages or OpenAI Chat Completions protocol.
+
 All three platforms support in-app updates.
 
 ## Your keys, your data
