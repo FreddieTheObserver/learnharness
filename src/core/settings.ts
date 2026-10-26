@@ -29,6 +29,7 @@
 
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { AUTH_PROVIDER_KEYS } from "./auth-keys.ts";
+import { sanitizeCustomProviders, type CustomProvidersSettings } from "./custom-providers.ts";
 import type { ModelRole } from "../../config.ts";
 import type { ChatSettings } from "./contracts/chat.ts";
 import type { SearchEngineId } from "./search.ts";
@@ -367,6 +368,8 @@ export interface UserSettings {
 	appearance?: AppearanceSettings;
 	graph?: GraphSettings;
 	compaction?: CompactionSettings;
+	/** User-defined endpoints keyed by provider id (core/custom-providers.ts). */
+	customProviders?: CustomProvidersSettings;
 	[key: string]: unknown;
 }
 
@@ -631,6 +634,9 @@ export function sanitizeUserSettings(raw: unknown): UserSettings | null {
 			out.compaction = sanitizeCompaction(r.compaction as Record<string, unknown>);
 		}
 	}
+	// Always set when present, so a malformed value can never ride along
+	// verbatim through the unknown-key loop below.
+	if (r.customProviders !== undefined) out.customProviders = sanitizeCustomProviders(r.customProviders) ?? {};
 	// Unknown top-level keys ride along untouched (forward-compat). One
 	// known-DEAD key is stripped instead of riding: `chat` (the old
 	// default-settings section) died with per-session models (owner,
